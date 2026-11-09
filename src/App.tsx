@@ -44,6 +44,13 @@ const WEEKDAYS: Array<{ value: Weekday; label: string }> = [
 ];
 
 const STATUS_LABELS = t.status;
+const COUNTDOWN_LABELS = {
+  before: t.toWork,
+  working: t.toHome,
+  break: t.toHome,
+  rest: t.restDay,
+  after: t.dayDone,
+};
 
 function formatMoney(value: number, digits = 2): string {
   return new Intl.NumberFormat("zh-CN", {
@@ -200,13 +207,7 @@ function Dashboard({
         </div>
         <div className="mini-amount">{formatMoney(metrics.earnedToday, 4)}</div>
         <div className="mini-row">
-          <span>
-            {metrics.status === "before"
-              ? t.toWork
-              : metrics.status === "rest"
-                ? t.restDay
-                : t.toHome}
-          </span>
+          <span>{COUNTDOWN_LABELS[metrics.status]}</span>
           <strong>{formatClock(metrics.countdownSeconds)}</strong>
           <span>{progress}%</span>
         </div>
@@ -246,13 +247,7 @@ function Dashboard({
       <section className="countdown-row">
         <div>
           <span className="section-kicker">
-            {metrics.status === "before"
-              ? t.toWork
-              : metrics.status === "after"
-                ? t.dayDone
-                : metrics.status === "rest"
-                  ? t.restDay
-                  : t.toHome}
+            {COUNTDOWN_LABELS[metrics.status]}
           </span>
           <strong className="countdown-value">
             {formatClock(metrics.countdownSeconds)}
@@ -538,10 +533,12 @@ function CalendarPanel({
   settings,
   overrides,
   onToggleDay,
+  onBack,
 }: {
   settings: AppSettings;
   overrides: CalendarOverrides;
   onToggleDay: (date: Date) => Promise<void>;
+  onBack: () => void;
 }) {
   const [saving, setSaving] = useState(false);
   const [month, setMonth] = useState(
@@ -574,7 +571,15 @@ function CalendarPanel({
           <h1>{t.calendar}</h1>
           <p>点击切换排班，再次点击恢复默认</p>
         </div>
-        <CalendarDays size={30} strokeWidth={1.5} />
+        <button
+          type="button"
+          className="back-link"
+          onClick={onBack}
+          aria-label={t.back}
+        >
+          <ChevronLeft size={16} />
+          今日
+        </button>
       </div>
       <section className="calendar-card">
         <div className="calendar-toolbar">
@@ -851,17 +856,8 @@ function App() {
           settings={settings}
           overrides={overrides}
           onToggleDay={saveOverrides}
+          onBack={() => setView("dashboard")}
         />
-      )}
-      {view === "calendar" && (
-        <button
-          type="button"
-          className="back-link"
-          onClick={() => setView("dashboard")}
-        >
-          <ChevronLeft size={16} />
-          {t.back}
-        </button>
       )}
     </div>
   );

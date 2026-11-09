@@ -785,8 +785,8 @@
 }
 
 .back-link {
-  margin: -10px 22px 22px;
-  justify-self: start;
+  flex-shrink: 0;
+  margin-top: 0;
 }
 
 .loading-shell {

@@ -29,6 +29,9 @@ test("saves settings and calendar overrides through the normal UI", async ({
       exact: true,
     }),
   ).toBeEnabled();
+  await expect(
+    page.getByRole("button", { name: "回到今日", exact: true }),
+  ).toBeInViewport();
   await page.getByRole("button", { name: "回到今日", exact: true }).click();
   await expect(page.getByText("休息日", { exact: true })).toBeVisible();
   await page.reload();
