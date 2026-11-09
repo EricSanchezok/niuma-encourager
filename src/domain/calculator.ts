@@ -151,8 +151,14 @@ export function calculateWorkMetrics(
       ? settings.monthlySalary / (plannedMinutesMonth / 60)
       : 0;
   const status = getStatus(now, settings, holidays, overrides);
-  const earnedToday = hourlyRate * (elapsedMinutesToday / 60);
-  const earnedMonth = hourlyRate * (elapsedMinutesMonth / 60);
+  const earnedToday = Math.min(
+    settings.monthlySalary,
+    hourlyRate * (elapsedMinutesToday / 60),
+  );
+  const earnedMonth = Math.min(
+    settings.monthlySalary,
+    hourlyRate * (elapsedMinutesMonth / 60),
+  );
   const goalRemainingHours =
     hourlyRate > 0
       ? Math.max(0, (settings.goal.amount - earnedMonth) / hourlyRate)

@@ -1,0 +1,81 @@
+.an-number {
+  display: inline-flex;
+  max-width: 100%;
+  font-variant-numeric: tabular-nums;
+  font-kerning: none;
+  letter-spacing: -0.025em;
+  white-space: nowrap;
+  line-height: 1.1;
+  isolation: isolate;
+}
+
+.an-visual,
+.an-integer,
+.an-fraction {
+  display: inline-flex;
+  align-items: baseline;
+}
+
+.an-digit {
+  display: inline-block;
+  width: 0.62em;
+  height: 1.1em;
+  overflow: hidden;
+  vertical-align: bottom;
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    black 9%,
+    black 91%,
+    transparent
+  );
+}
+
+.an-digit-reel {
+  display: block;
+}
+
+.an-digit-row {
+  display: block;
+  height: 1.1em;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.an-currency {
+  margin-inline-end: 0.18em;
+  font-size: 0.4em;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.an-fraction {
+  margin-inline-start: 0.02em;
+  font-size: 0.56em;
+  font-weight: 450;
+  letter-spacing: -0.035em;
+}
+
+.an-separator {
+  display: inline-block;
+  line-height: 1.1;
+}
+
+.an-clock-separator {
+  margin-inline: 0.01em;
+  opacity: 0.42;
+}
+
+.an-number--long .an-visual {
+  font-size: 0.62em;
+}
+
+.an-number--very-long .an-visual {
+  font-size: 0.34em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .an-digit {
+    mask-image: none;
+  }
+}

@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "牛马鼓励器",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "identifier": "com.ericsanchezok.niumaencourager",
   "build": {
     "frontendDist": "../dist",
@@ -14,9 +14,9 @@
       {
         "title": "牛马鼓励器",
         "width": 390,
-        "height": 640,
+        "height": 612,
         "minWidth": 340,
-        "minHeight": 220,
+        "minHeight": 168,
         "resizable": true,
         "fullscreen": false,
         "decorations": false,

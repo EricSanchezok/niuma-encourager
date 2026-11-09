@@ -1,6 +1,6 @@
 [package]
 name = "niuma_encourager"
-version = "0.1.2"
+version = "0.2.0"
 description = "A tiny local workday earnings companion"
 authors = ["EricSanchezok"]
 license = "MIT"

@@ -189,3 +189,19 @@ describe("calculateWorkMetrics", () => {
     expect(metrics.earningsPerSecond).toBeGreaterThan(0);
   });
 });
+
+describe("salary boundaries", () => {
+  it("never exceeds monthly salary from floating point rounding on a complete month", () => {
+    const settings = createDefaultSettings();
+    settings.monthlySalary = Number.MAX_SAFE_INTEGER;
+    settings.schedule.workDays = [];
+    const metrics = calculateWorkMetrics(
+      new Date(2026, 10, 3, 19),
+      settings,
+      {},
+      { "2026-11-03": "work" },
+    );
+    expect(metrics.earnedToday).toBe(Number.MAX_SAFE_INTEGER);
+    expect(metrics.earnedMonth).toBe(Number.MAX_SAFE_INTEGER);
+  });
+});

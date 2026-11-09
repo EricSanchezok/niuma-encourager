@@ -175,7 +175,7 @@ jobs:
           test "$(find . -maxdepth 1 -type f | wc -l)" -eq 4
           sha256sum niuma-* > SHA256SUMS.txt
           cat > release-notes.md <<'NOTES'
-          牛马鼓励器首次公开版本。
+          牛马鼓励器桌面版。
 
           - macOS Apple 芯片和 Intel 请下载 universal DMG。
           - Windows x64 请下载 setup.exe。

@@ -11,6 +11,9 @@ import {
   Save,
   Settings as SettingsIcon,
   Target,
+  Check,
+  Clock3,
+  LoaderCircle,
   X,
 } from "lucide-react";
 import { calculateWorkMetrics } from "./domain/calculator";
@@ -29,6 +32,7 @@ import { messages as t } from "./i18n";
 import { MAINLAND_HOLIDAY_CALENDAR } from "./domain/holidayData";
 import type { AppSettings, CalendarOverrides, Weekday } from "./domain/types";
 import { readPersistedState, persistState } from "./persistence/store";
+import { AnimatedNumber, MoneyDisplay } from "./components/AnimatedNumber";
 import "./App.css";
 
 type View = "dashboard" | "settings" | "calendar";
@@ -91,12 +95,14 @@ function IconButton({
   label,
   onClick,
   children,
-  active = false,
+  active,
+  disabled = false,
 }: {
   label: string;
   onClick: () => void;
   children: React.ReactNode;
   active?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <button
@@ -104,9 +110,11 @@ function IconButton({
       className={`icon-button ${active ? "is-active" : ""}`}
       aria-label={label}
       title={label}
+      aria-pressed={active}
+      disabled={disabled}
       onClick={onClick}
     >
-      {children}
+      <span className="button-glyph">{children}</span>
     </button>
   );
 }
@@ -115,6 +123,8 @@ function Header({
   view,
   mini,
   pinned,
+  busy,
+  demo,
   onViewChange,
   onMiniChange,
   onPinChange,
@@ -122,29 +132,48 @@ function Header({
   view: View;
   mini: boolean;
   pinned: boolean;
+  busy: boolean;
+  demo: boolean;
   onViewChange: (view: View) => void;
   onMiniChange: (mini: boolean) => void;
   onPinChange: (pinned: boolean) => void;
 }) {
   return (
-    <header className="app-header" data-tauri-drag-region>
-      <img
-        className="brand-logo"
-        src="/favicon.svg"
-        alt=""
-        draggable="false"
-        data-tauri-drag-region
-      />
-      <div className="brand-copy" data-tauri-drag-region>
-        <strong data-tauri-drag-region>{t.appName}</strong>
-      </div>
-      <div className="header-actions">
+    <header
+      className={`app-header ${mini ? "mini-toolbar" : ""}`}
+      data-tauri-drag-region={!mini || undefined}
+    >
+      {!mini && (
+        <div className="brand" data-tauri-drag-region>
+          <img
+            className="brand-logo"
+            src="/favicon.svg"
+            alt=""
+            draggable="false"
+            data-tauri-drag-region
+          />
+          <strong data-tauri-drag-region>{t.appName}</strong>
+          {demo && (
+            <button
+              type="button"
+              className="demo-indicator"
+              title="设置我的薪资"
+              aria-label="设置我的薪资"
+              onClick={() => onViewChange("settings")}
+            >
+              示例
+            </button>
+          )}
+        </div>
+      )}
+      <div className="header-actions" role="group" aria-label="窗口操作">
         {view === "dashboard" && (
           <IconButton
             label={mini ? t.expand : t.mini}
+            disabled={busy}
             onClick={() => onMiniChange(!mini)}
           >
-            {mini ? <Maximize2 size={17} /> : <Minimize2 size={17} />}
+            {mini ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
           </IconButton>
         )}
         <IconButton
@@ -152,20 +181,20 @@ function Header({
           active={pinned}
           onClick={() => onPinChange(!pinned)}
         >
-          {pinned ? <Pin size={17} /> : <PinOff size={17} />}
+          {pinned ? <Pin size={16} /> : <PinOff size={16} />}
         </IconButton>
         <IconButton
           label={t.settings}
+          disabled={busy}
           active={view === "settings"}
           onClick={() =>
             onViewChange(view === "settings" ? "dashboard" : "settings")
           }
         >
-          <SettingsIcon size={17} />
+          <SettingsIcon size={16} />
         </IconButton>
-        <span className="header-divider" />
         <IconButton label={t.hide} onClick={() => void hideWindow()}>
-          <X size={18} />
+          <X size={17} />
         </IconButton>
       </div>
     </header>
@@ -198,18 +227,31 @@ function Dashboard({
   const plannedHours = metrics.plannedMinutesToday / 60;
   const progress = Math.round(metrics.dayProgress * 1000) / 10;
 
+  const goalComplete = metrics.earnedMonth >= settings.goal.amount;
+
   if (mini) {
     return (
-      <main className="mini-dashboard">
-        <div className="mini-topline">
+      <main className="mini-dashboard" data-tauri-drag-region>
+        <div className="mini-topline" data-tauri-drag-region>
           <span>{t.earnedToday}</span>
-          <StatusPill status={metrics.status} />
+          <span className="mini-status">
+            <StatusPill status={metrics.status} />
+          </span>
         </div>
-        <div className="mini-amount">{formatMoney(metrics.earnedToday, 4)}</div>
-        <div className="mini-row">
+        <div className="mini-amount" data-tauri-drag-region>
+          <MoneyDisplay value={metrics.earnedToday} />
+        </div>
+        <div className="mini-row" data-tauri-drag-region>
           <span>{COUNTDOWN_LABELS[metrics.status]}</span>
-          <strong>{formatClock(metrics.countdownSeconds)}</strong>
-          <span>{progress}%</span>
+          <AnimatedNumber
+            value={formatClock(metrics.countdownSeconds)}
+            variant="clock"
+            direction="down"
+          />
+          <span className="mini-percentage">
+            {progress.toFixed(1)}
+            <small>%</small>
+          </span>
         </div>
         <div
           className="progress-track progress-track-compact"
@@ -219,7 +261,7 @@ function Dashboard({
           aria-valuemin={0}
           aria-valuemax={100}
         >
-          <span style={{ width: `${progress}%` }} />
+          <span style={{ transform: `scaleX(${metrics.dayProgress})` }} />
         </div>
       </main>
     );
@@ -227,50 +269,32 @@ function Dashboard({
 
   return (
     <main className="dashboard-content">
-      <section className="today-intro">
-        <div>
-          <p className="eyebrow">{formatDate(now)}</p>
-          <div className="schedule-line">
-            <StatusPill status={metrics.status} />
-            <span>
-              {metrics.status === "rest"
-                ? ""
-                : `${settings.schedule.workStart}–${settings.schedule.workEnd}`}
-            </span>
-          </div>
-        </div>
-        <div className="clock-stack">
-          <strong>{formatTime(now)}</strong>
-        </div>
-      </section>
-
-      <section className="countdown-row">
-        <div>
-          <span className="section-kicker">
-            {COUNTDOWN_LABELS[metrics.status]}
-          </span>
-          <strong className="countdown-value">
-            {formatClock(metrics.countdownSeconds)}
-          </strong>
-        </div>
-        <div className="progress-summary">
-          <strong>{progress}%</strong>
-          <span>
-            {hoursToday.toFixed(2)} / {plannedHours.toFixed(2)} 小时
-          </span>
-        </div>
-      </section>
-
-      <section className="earnings-card">
+      <div className="today-intro">
+        <p>{formatDate(now)}</p>
+        <time dateTime={now.toISOString()}>{formatTime(now)}</time>
+      </div>
+      <section className="earnings-card" aria-label="今日收入">
         <div className="earnings-card-topline">
           <span>{t.earnedToday}</span>
+          <StatusPill status={metrics.status} />
         </div>
-        <div className="earnings-number">
-          {formatMoney(metrics.earnedToday, 4)}
-        </div>
+        <MoneyDisplay className="earnings-number" value={metrics.earnedToday} />
         <div className="earnings-meta">
           <span>{t.currentRate}</span>
-          <strong>{formatMoney(metrics.earningsPerSecond, 4)} / 秒</strong>
+          <span className="earnings-rate">
+            {formatMoney(metrics.earningsPerSecond, 4)}
+            <span> / 秒</span>
+          </span>
+        </div>
+        <div className="work-progress">
+          <span>
+            {hoursToday.toFixed(2)}
+            <span> / {plannedHours.toFixed(2)} 小时</span>
+          </span>
+          <span>
+            {progress.toFixed(1)}
+            <small>%</small>
+          </span>
         </div>
         <div
           className="progress-track"
@@ -280,52 +304,74 @@ function Dashboard({
           aria-valuemin={0}
           aria-valuemax={100}
         >
-          <span style={{ width: `${progress}%` }} />
+          <span style={{ transform: `scaleX(${metrics.dayProgress})` }} />
         </div>
       </section>
-
-      <section className="goal-row">
+      <section className="countdown-row">
+        <div>
+          <span className="section-kicker">
+            {COUNTDOWN_LABELS[metrics.status]}
+          </span>
+          <AnimatedNumber
+            className="countdown-value"
+            value={formatClock(metrics.countdownSeconds)}
+            variant="clock"
+            direction="down"
+          />
+        </div>
+        <div className="schedule-chip">
+          <Clock3 size={14} strokeWidth={1.5} />
+          <span>
+            {settings.schedule.workStart} — {settings.schedule.workEnd}
+          </span>
+        </div>
+      </section>
+      <section className={`goal-row ${goalComplete ? "is-complete" : ""}`}>
         <div className="goal-icon">
-          <Target size={18} />
+          {goalComplete ? (
+            <Check size={17} />
+          ) : (
+            <Target size={18} strokeWidth={1.5} />
+          )}
         </div>
         <div className="goal-copy">
-          <strong>{settings.goal.name || "本月目标"}</strong>
+          <strong title={settings.goal.name}>
+            {settings.goal.name || "本月目标"}
+          </strong>
           <span>
-            {metrics.earnedMonth >= settings.goal.amount
+            {goalComplete
               ? "本月目标已达成"
               : metrics.hourlyRate > 0
                 ? `还需工作 ${formatDuration(metrics.goalRemainingHours * 60)}`
                 : "设置薪资和排班后估算"}
           </span>
         </div>
-        <strong className="goal-amount">
-          目标 {formatMoney(settings.goal.amount)}
-        </strong>
+        <span className="goal-amount">{formatMoney(settings.goal.amount)}</span>
       </section>
-
       <section className="monthly-card">
         <div className="monthly-heading">
-          <div>
-            <span className="section-kicker">{t.earnedMonth}</span>
-          </div>
-          <strong>{formatMoney(metrics.earnedMonth)}</strong>
+          <span className="section-kicker">{t.earnedMonth}</span>
+          <MoneyDisplay
+            value={metrics.earnedMonth}
+            precision={2}
+            className="monthly-total"
+          />
         </div>
         <div className="monthly-details">
-          <div>
-            <span>{t.hourlyRate}</span>
+          <span>
+            {t.hourlyRate}
             <strong>{formatMoney(metrics.hourlyRate)}</strong>
-          </div>
-          <div>
-            <span>今日满勤</span>
+          </span>
+          <span>
+            今日满勤
             <strong>{formatMoney(metrics.hourlyRate * plannedHours)}</strong>
-          </div>
+          </span>
         </div>
       </section>
-
       <button type="button" className="calendar-link" onClick={onCalendar}>
-        <CalendarDays size={16} />
+        <CalendarDays size={15} strokeWidth={1.5} />
         {t.calendar}
-        <ChevronRight size={16} />
+        <ChevronRight size={14} />
       </button>
     </main>
   );
@@ -343,13 +389,22 @@ function SettingsPanel({
   const [draft, setDraft] = useState(settings);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const save = async () => {
     const validation = validateSettings(draft);
     if (!validation.valid) {
+      setFieldErrors(validation.errors);
       setError(Object.values(validation.errors)[0]);
+      window.requestAnimationFrame?.(() =>
+        document
+          .querySelector<HTMLInputElement>('input[aria-invalid="true"]')
+          ?.focus(),
+      );
       return;
     }
+    setFieldErrors({});
+    setError("");
     setSaving(true);
     try {
       await onSave(draft);
@@ -387,144 +442,197 @@ function SettingsPanel({
 
   return (
     <main className="settings-content">
-      <div className="page-heading">
-        <div>
-          <h1>{t.settings}</h1>
-        </div>
-      </div>
-
-      <div className="settings-grid">
-        <label className="field field-wide">
-          <span>{t.salary}</span>
-          <div className="input-with-prefix">
-            <span>¥</span>
-            <input
-              type="number"
-              min="0"
-              step="100"
-              value={draft.monthlySalary}
-              onChange={(event) =>
-                setDraft({
-                  ...draft,
-                  monthlySalary: Number(event.target.value) || 0,
-                })
-              }
-            />
+      <form
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault();
+          void save();
+        }}
+      >
+        <div className="page-heading">
+          <div>
+            <h1>{t.settings}</h1>
           </div>
-        </label>
-        <div className="field field-wide">
-          <span>{t.workDays}</span>
-          <div className="weekday-picker">
-            {WEEKDAYS.map((day) => (
-              <button
-                key={day.value}
-                type="button"
-                className={
-                  draft.schedule.workDays.includes(day.value)
-                    ? "weekday is-selected"
-                    : "weekday"
+        </div>
+
+        <div className="settings-grid">
+          <label className="field field-wide">
+            <span>{t.salary}</span>
+            <div className="input-with-prefix">
+              <span>¥</span>
+              <input
+                type="number"
+                min="0"
+                step="100"
+                value={draft.monthlySalary}
+                name="monthlySalary"
+                aria-invalid={Boolean(fieldErrors["monthlySalary"])}
+                aria-describedby={
+                  fieldErrors["monthlySalary"] ? "settings-error" : undefined
                 }
-                onClick={() => toggleWeekday(day.value)}
-                aria-pressed={draft.schedule.workDays.includes(day.value)}
-              >
-                {day.label}
-              </button>
-            ))}
+                onChange={(event) =>
+                  setDraft({
+                    ...draft,
+                    monthlySalary: Number(event.target.value) || 0,
+                  })
+                }
+              />
+            </div>
+          </label>
+          <div className="field field-wide">
+            <span>{t.workDays}</span>
+            <div className="weekday-picker">
+              {WEEKDAYS.map((day) => (
+                <button
+                  key={day.value}
+                  type="button"
+                  className={
+                    draft.schedule.workDays.includes(day.value)
+                      ? "weekday is-selected"
+                      : "weekday"
+                  }
+                  onClick={() => toggleWeekday(day.value)}
+                  aria-pressed={draft.schedule.workDays.includes(day.value)}
+                >
+                  {day.label}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
-        <label className="field">
-          <span>{t.workStart}</span>
-          <input
-            type="time"
-            value={draft.schedule.workStart}
-            onChange={(event) =>
-              updateSchedule("workStart", event.target.value)
-            }
-          />
-        </label>
-        <label className="field">
-          <span>{t.workEnd}</span>
-          <input
-            type="time"
-            value={draft.schedule.workEnd}
-            onChange={(event) => updateSchedule("workEnd", event.target.value)}
-          />
-        </label>
-        <label className="field">
-          <span>{t.breakStart}</span>
-          <input
-            type="time"
-            value={draft.schedule.breakStart}
-            onChange={(event) =>
-              updateSchedule("breakStart", event.target.value)
-            }
-          />
-        </label>
-        <label className="field">
-          <span>{t.breakEnd}</span>
-          <input
-            type="time"
-            value={draft.schedule.breakEnd}
-            onChange={(event) => updateSchedule("breakEnd", event.target.value)}
-          />
-        </label>
-        <label className="field field-wide">
-          <span>{t.goalName}</span>
-          <input
-            type="text"
-            value={draft.goal.name}
-            onChange={(event) =>
-              setDraft({
-                ...draft,
-                goal: { ...draft.goal, name: event.target.value },
-              })
-            }
-            placeholder="例如 一件冲锋衣"
-          />
-        </label>
-        <label className="field field-wide">
-          <span>{t.goalAmount}</span>
-          <div className="input-with-prefix">
-            <span>¥</span>
+          <label className="field">
+            <span>{t.workStart}</span>
             <input
-              type="number"
-              min="0"
-              step="100"
-              value={draft.goal.amount}
+              type="time"
+              value={draft.schedule.workStart}
+              name="schedule.workStart"
+              aria-invalid={Boolean(fieldErrors["schedule.workStart"])}
+              aria-describedby={
+                fieldErrors["schedule.workStart"] ? "settings-error" : undefined
+              }
+              onChange={(event) =>
+                updateSchedule("workStart", event.target.value)
+              }
+            />
+          </label>
+          <label className="field">
+            <span>{t.workEnd}</span>
+            <input
+              type="time"
+              value={draft.schedule.workEnd}
+              name="schedule.workEnd"
+              aria-invalid={Boolean(fieldErrors["schedule.workEnd"])}
+              aria-describedby={
+                fieldErrors["schedule.workEnd"] ? "settings-error" : undefined
+              }
+              onChange={(event) =>
+                updateSchedule("workEnd", event.target.value)
+              }
+            />
+          </label>
+          <label className="field">
+            <span>{t.breakStart}</span>
+            <input
+              type="time"
+              value={draft.schedule.breakStart}
+              name="schedule.breakStart"
+              aria-invalid={Boolean(fieldErrors["schedule.breakStart"])}
+              aria-describedby={
+                fieldErrors["schedule.breakStart"]
+                  ? "settings-error"
+                  : undefined
+              }
+              onChange={(event) =>
+                updateSchedule("breakStart", event.target.value)
+              }
+            />
+          </label>
+          <label className="field">
+            <span>{t.breakEnd}</span>
+            <input
+              type="time"
+              value={draft.schedule.breakEnd}
+              name="schedule.breakEnd"
+              aria-invalid={Boolean(fieldErrors["schedule.breakEnd"])}
+              aria-describedby={
+                fieldErrors["schedule.breakEnd"] ? "settings-error" : undefined
+              }
+              onChange={(event) =>
+                updateSchedule("breakEnd", event.target.value)
+              }
+            />
+          </label>
+          <label className="field field-wide">
+            <span>{t.goalName}</span>
+            <input
+              type="text"
+              value={draft.goal.name}
+              name="goal.name"
+              aria-invalid={Boolean(fieldErrors["goal.name"])}
+              aria-describedby={
+                fieldErrors["goal.name"] ? "settings-error" : undefined
+              }
               onChange={(event) =>
                 setDraft({
                   ...draft,
-                  goal: {
-                    ...draft.goal,
-                    amount: Number(event.target.value) || 0,
-                  },
+                  goal: { ...draft.goal, name: event.target.value },
                 })
               }
+              placeholder="例如 一件冲锋衣"
             />
-          </div>
-        </label>
-      </div>
+          </label>
+          <label className="field field-wide">
+            <span>{t.goalAmount}</span>
+            <div className="input-with-prefix">
+              <span>¥</span>
+              <input
+                type="number"
+                min="0"
+                step="100"
+                value={draft.goal.amount}
+                name="goal.amount"
+                aria-invalid={Boolean(fieldErrors["goal.amount"])}
+                aria-describedby={
+                  fieldErrors["goal.amount"] ? "settings-error" : undefined
+                }
+                onChange={(event) =>
+                  setDraft({
+                    ...draft,
+                    goal: {
+                      ...draft.goal,
+                      amount: Number(event.target.value) || 0,
+                    },
+                  })
+                }
+              />
+            </div>
+          </label>
+        </div>
 
-      {error && (
-        <p className="error-message" role="alert">
-          {error}
-        </p>
-      )}
-      <div className="settings-actions">
-        <button type="button" className="secondary-button" onClick={onCancel}>
-          <RotateCcw size={16} />
-          {t.cancel}
-        </button>
-        <button
-          type="button"
-          className="primary-button"
-          disabled={saving}
-          onClick={() => void save()}
-        >
-          <Save size={16} />
-          {saving ? "保存中…" : t.save}
-        </button>
-      </div>
+        {error && (
+          <p className="error-message" id="settings-error" role="alert">
+            {error}
+          </p>
+        )}
+        <div className="settings-actions">
+          <button type="button" className="secondary-button" onClick={onCancel}>
+            <RotateCcw size={16} />
+            {t.cancel}
+          </button>
+          <button
+            type="submit"
+            className="primary-button"
+            disabled={saving}
+            aria-busy={saving}
+          >
+            {saving ? (
+              <LoaderCircle className="spin" size={16} />
+            ) : (
+              <Save size={16} />
+            )}
+            {t.save}
+          </button>
+        </div>
+      </form>
     </main>
   );
 }
@@ -670,40 +778,38 @@ function App() {
   const [hydrated, setHydrated] = useState(false);
   const [configured, setConfigured] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [modePhase, setModePhase] = useState("idle");
+  const [usingKeyboard, setUsingKeyboard] = useState(false);
+  const changingMode = useRef(false);
   const latestState = useRef({ settings, overrides, configured });
   const pendingSave = useRef<Promise<void>>(Promise.resolve());
 
   useEffect(() => {
     let active = true;
-    void readPersistedState()
-      .then((state) => {
-        if (!active) return;
+    void Promise.allSettled([
+      readPersistedState(),
+      getPinned(),
+      readWindowMode(),
+    ]).then(([storage, pin, mode]) => {
+      if (!active) return;
+      if (storage.status === "fulfilled") {
         const restored = {
-          settings: migrateSettings(state.settings),
-          overrides: state.overrides ?? {},
-          configured: state.configured ?? false,
+          settings: migrateSettings(storage.value.settings),
+          overrides: storage.value.overrides ?? {},
+          configured: storage.value.configured ?? false,
         };
         latestState.current = restored;
         setSettings(restored.settings);
         setOverrides(restored.overrides);
         setConfigured(restored.configured);
-      })
-      .catch(() => {
-        if (active) setError("本机数据读取失败，正在使用示例设置。");
-      })
-      .finally(() => {
-        if (active) setHydrated(true);
-      });
-    void getPinned()
-      .then((value) => {
-        if (active) setPinned(value);
-      })
-      .catch(() => undefined);
-    void readWindowMode()
-      .then((value) => {
-        if (active) setMini(value);
-      })
-      .catch(() => undefined);
+      } else {
+        setError("本机数据读取失败，正在使用示例设置。");
+      }
+      if (pin.status === "fulfilled") setPinned(pin.value);
+      if (mode.status === "fulfilled") setMini(mode.value);
+      setHydrated(true);
+    });
     return () => {
       active = false;
     };
@@ -713,6 +819,40 @@ function App() {
     const timer = window.setInterval(() => setNow(new Date()), 1000);
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (
+        ["Tab", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(
+          event.key,
+        )
+      )
+        setUsingKeyboard(true);
+      if (
+        event.key === "Escape" &&
+        view !== "dashboard" &&
+        !changingMode.current
+      ) {
+        event.preventDefault();
+        setView("dashboard");
+        window.requestAnimationFrame(() =>
+          document
+            .querySelector<HTMLButtonElement>(
+              '.header-actions button[aria-label="设置"]',
+            )
+            ?.focus(),
+        );
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [view]);
+
+  useEffect(() => {
+    if (!notice) return;
+    const timer = window.setTimeout(() => setNotice(""), 2200);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
 
   const metrics = useMemo(
     () =>
@@ -737,22 +877,62 @@ function App() {
     try {
       await setWindowPinned(value);
       setPinned(value);
+      setError("");
     } catch {
       setError("此桌面环境暂时无法切换置顶。");
     }
   };
 
-  const handleMiniChange = async (value: boolean) => {
+  const handleMiniChange = async (
+    value: boolean,
+    nextView?: View,
+  ): Promise<boolean> => {
+    if (changingMode.current) return false;
+    changingMode.current = true;
+    const reduced = window.matchMedia?.(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    const pause = (milliseconds: number) =>
+      reduced
+        ? Promise.resolve()
+        : new Promise<void>((resolve) =>
+            window.setTimeout(resolve, milliseconds),
+          );
+    setModePhase("leaving");
     try {
+      await pause(110);
       await applyWindowMode(value);
       setMini(value);
+      setError("");
+      if (nextView) setView(nextView);
+      setModePhase("arriving");
+      await pause(190);
+      setModePhase("idle");
+      if (usingKeyboard) {
+        window.requestAnimationFrame(() => {
+          const selector =
+            nextView === "settings"
+              ? 'input[name="monthlySalary"]'
+              : `.header-actions button[aria-label="${value ? t.expand : t.mini}"]`;
+          document.querySelector<HTMLElement>(selector)?.focus();
+        });
+      }
+      return true;
     } catch {
+      setModePhase("idle");
       setError("窗口尺寸切换失败，请重试。");
+      return false;
+    } finally {
+      changingMode.current = false;
     }
   };
 
   const handleViewChange = async (nextView: View) => {
-    if (mini) await handleMiniChange(false);
+    if (changingMode.current) return;
+    if (mini) {
+      await handleMiniChange(false, nextView);
+      return;
+    }
     setView(nextView);
   };
 
@@ -780,6 +960,7 @@ function App() {
       configured: true,
     }));
     setView("dashboard");
+    setNotice("设置已保存");
   };
 
   const saveOverrides = async (date: Date) => {
@@ -809,11 +990,16 @@ function App() {
   return (
     <div
       className={`app-shell ${mini && view === "dashboard" ? "is-mini" : ""}`}
+      data-mode-phase={modePhase}
+      data-keyboard={usingKeyboard}
+      onPointerDownCapture={() => setUsingKeyboard(false)}
     >
       <Header
         view={view}
         mini={mini}
         pinned={pinned}
+        busy={modePhase !== "idle"}
+        demo={!configured && view === "dashboard"}
         onViewChange={handleViewChange}
         onMiniChange={(next) => void handleMiniChange(next)}
         onPinChange={handlePinChange}
@@ -823,42 +1009,44 @@ function App() {
           {error}
         </p>
       )}
-      {!configured && view === "dashboard" && !mini && (
-        <button
-          type="button"
-          className="demo-banner"
-          onClick={() => void handleViewChange("settings")}
-        >
-          示例月薪 ¥17,500{" "}
-          <span>
-            设置我的薪资 <ChevronRight size={14} />
-          </span>
-        </button>
-      )}
-      {view === "dashboard" && (
-        <Dashboard
-          settings={settings}
-          metrics={metrics}
-          now={now}
-          mini={mini}
-          onCalendar={() => handleViewChange("calendar")}
-        />
-      )}
-      {view === "settings" && (
-        <SettingsPanel
-          settings={settings}
-          onSave={saveSettings}
-          onCancel={() => setView("dashboard")}
-        />
-      )}
-      {view === "calendar" && (
-        <CalendarPanel
-          settings={settings}
-          overrides={overrides}
-          onToggleDay={saveOverrides}
-          onBack={() => setView("dashboard")}
-        />
-      )}
+      <div className="view-stage" key={`${view}:${mini}`}>
+        {view === "dashboard" && (
+          <Dashboard
+            settings={settings}
+            metrics={metrics}
+            now={now}
+            mini={mini}
+            onCalendar={() => handleViewChange("calendar")}
+          />
+        )}
+        {view === "settings" && (
+          <SettingsPanel
+            settings={settings}
+            onSave={saveSettings}
+            onCancel={() => setView("dashboard")}
+          />
+        )}
+        {view === "calendar" && (
+          <CalendarPanel
+            settings={settings}
+            overrides={overrides}
+            onToggleDay={saveOverrides}
+            onBack={() => setView("dashboard")}
+          />
+        )}
+      </div>
+      <div
+        className={`feedback-toast ${notice ? "is-visible" : ""}`}
+        role="status"
+        aria-live="polite"
+      >
+        {notice && (
+          <>
+            <Check size={15} aria-hidden="true" />
+            {notice}
+          </>
+        )}
+      </div>
     </div>
   );
 }

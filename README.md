@@ -1,11 +1,11 @@
 # 牛马鼓励器
 
-把工作时间换算成收入的桌面小工具。完整悬浮窗和迷你悬浮窗都能显示今日已赚、下班倒计时和工时进度，设置与排班保存在本机。
+把工作时间换算成收入的桌面小工具。完整悬浮窗和迷你悬浮窗都能显示今日已赚、下班倒计时和工时进度，设置与排班保存在本机。金额逐位滚动，倒计时只切换发生变化的数字，支持系统的“减少动态效果”偏好。
 
 [下载 macOS](https://github.com/EricSanchezok/niuma-encourager/releases/latest/download/niuma-encourager_macos-universal.dmg) · [下载 Windows](https://github.com/EricSanchezok/niuma-encourager/releases/latest/download/niuma-encourager_windows-x64-setup.exe) · [下载 Linux](https://github.com/EricSanchezok/niuma-encourager/releases/latest/download/niuma-encourager_linux-x86_64.AppImage) · [全部安装包](https://github.com/EricSanchezok/niuma-encourager/releases/latest)
 
 <img src="docs/images/dashboard.png" width="340" alt="完整悬浮窗，显示实时收入、下班倒计时和本月累计">
-<img src="docs/images/mini.png" width="300" alt="迷你悬浮窗">
+<img src="docs/images/mini-motion.gif" width="340" alt="迷你悬浮窗">
 
 ## 安装
 
@@ -23,8 +23,8 @@ Linux AppImage 先执行 `chmod +x niuma-encourager_linux-x86_64.AppImage`。系
 ## 使用
 
 - 进入设置填写月薪、每周工作日、上下班时间、午休和激励目标。
-- 图钉切换窗口置顶，缩小图标切换迷你窗，拖动顶部可移动窗口。
-- 关闭按钮隐藏窗口，托盘菜单可重新显示窗口或完全退出。
+- 图钉切换窗口置顶，缩小图标切换迷你窗。迷你窗隐藏标题栏，悬停或键盘聚焦时显示操作，拖动空白处或数字区可移动窗口。
+- 关闭按钮隐藏窗口，托盘菜单可重新显示窗口或完全退出。设置和日历页按 Esc 可返回今日。
 - 工作日历中点击日期可调整上班或休息，再次点击恢复默认安排。
 - 内置中国大陆 2025–2026 年节假日和补班数据。其他年份使用每周排班，支持手动调整。
 

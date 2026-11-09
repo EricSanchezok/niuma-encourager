@@ -40,7 +40,7 @@ test("saves settings and calendar overrides through the normal UI", async ({
   await expect(page.getByLabel("月薪", { exact: false })).toHaveValue("20000");
   await page.getByRole("button", { name: "取消", exact: true }).click();
   await page.getByRole("button", { name: "切换迷你窗口", exact: true }).click();
-  await page.setViewportSize({ width: 340, height: 220 });
+  await page.setViewportSize({ width: 340, height: 168 });
   await expect(page.getByRole("progressbar")).toBeInViewport();
   expect(
     await page.evaluate(
