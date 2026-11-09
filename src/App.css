@@ -139,9 +139,13 @@ button:disabled {
   scrollbar-color: var(--line) transparent;
 }
 .dashboard-content {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 16px;
   padding: 15px 22px 18px;
+}
+.dashboard-content > * {
+  flex-shrink: 0;
 }
 .today-intro {
   display: flex;
@@ -369,6 +373,7 @@ button:disabled {
   white-space: nowrap;
 }
 .monthly-card {
+  margin-top: auto;
   display: grid;
   gap: 13px;
   padding-top: 0;
