@@ -24,7 +24,7 @@ Linux AppImage 先执行 `chmod +x niuma-encourager_linux-x86_64.AppImage`。系
 
 - 进入设置填写月薪、每周工作日、上下班时间、午休和激励目标。
 - 图钉切换窗口置顶，缩小图标切换迷你窗。迷你窗隐藏标题栏，悬停或键盘聚焦时显示操作，拖动空白处或数字区可移动窗口。
-- 关闭按钮隐藏窗口，托盘菜单可重新显示窗口或完全退出。设置和日历页按 Esc 可返回今日。
+- 关闭按钮隐藏窗口，托盘菜单可重新显示窗口或完全退出。Header 的日历图标打开工作日历，设置和日历页按 Esc 可返回今日。
 - 工作日历中点击日期可调整上班或休息，再次点击恢复默认安排。
 - 内置中国大陆 2025–2026 年节假日和补班数据。其他年份使用每周排班，支持手动调整。
 
@@ -51,7 +51,7 @@ pnpm tauri dev
 pnpm lint
 pnpm test
 pnpm build
-pnpm exec playwright install chromium
+pnpm exec playwright install chromium webkit
 pnpm test:e2e
 cargo check --manifest-path src-tauri/Cargo.toml --locked
 pnpm tauri build

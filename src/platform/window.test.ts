@@ -54,41 +54,43 @@ describe("native window mode", () => {
     localStorage.setItem("expanded-window-size", "invalid JSON");
     await applyWindowMode(false);
     expect(native.window.setSize).toHaveBeenLastCalledWith(
-      expect.objectContaining({ width: 390, height: 612 }),
+      expect.objectContaining({ width: 390, height: 568 }),
     );
   });
 
-  it("migrates the old default window and saved expanded size only once", async () => {
-    native.window.innerSize.mockResolvedValue({
-      toLogical: () => ({ width: 390, height: 640 }),
-    });
-    localStorage.setItem(
-      "expanded-window-size",
-      JSON.stringify({ width: 390, height: 640 }),
-    );
-    expect(await readWindowMode()).toBe(false);
-    expect(native.window.setSize).toHaveBeenCalledWith(
-      expect.objectContaining({ width: 390, height: 612 }),
-    );
-    expect(JSON.parse(localStorage.getItem("expanded-window-size")!)).toEqual({
-      width: 390,
-      height: 612,
-    });
-    expect(localStorage.getItem("window-layout-version")).toBe("2");
+  it.each([640, 612])(
+    "migrates the old %ipx default window and saved expanded size only once",
+    async (height) => {
+      native.window.innerSize.mockResolvedValue({
+        toLogical: () => ({ width: 390, height }),
+      });
+      localStorage.setItem(
+        "expanded-window-size",
+        JSON.stringify({ width: 390, height }),
+      );
+      localStorage.setItem("window-layout-version", "2");
+      expect(await readWindowMode()).toBe(false);
+      expect(native.window.setSize).toHaveBeenCalledWith(
+        expect.objectContaining({ width: 390, height: 568 }),
+      );
+      expect(JSON.parse(localStorage.getItem("expanded-window-size")!)).toEqual(
+        { width: 390, height: 568 },
+      );
+      expect(localStorage.getItem("window-layout-version")).toBe("3");
 
-    // After upgrading, choosing the former height is a user preference.
-    native.window.setSize.mockClear();
-    localStorage.setItem(
-      "expanded-window-size",
-      JSON.stringify({ width: 390, height: 640 }),
-    );
-    await readWindowMode();
-    expect(native.window.setSize).not.toHaveBeenCalled();
-    expect(JSON.parse(localStorage.getItem("expanded-window-size")!)).toEqual({
-      width: 390,
-      height: 640,
-    });
-  });
+      // After upgrading, choosing the former height is a user preference.
+      native.window.setSize.mockClear();
+      localStorage.setItem(
+        "expanded-window-size",
+        JSON.stringify({ width: 390, height }),
+      );
+      await readWindowMode();
+      expect(native.window.setSize).not.toHaveBeenCalled();
+      expect(JSON.parse(localStorage.getItem("expanded-window-size")!)).toEqual(
+        { width: 390, height },
+      );
+    },
+  );
 
   it("preserves custom window dimensions during the layout upgrade", async () => {
     localStorage.setItem(
@@ -101,28 +103,32 @@ describe("native window mode", () => {
       width: 460,
       height: 720,
     });
-    expect(localStorage.getItem("window-layout-version")).toBe("2");
+    expect(localStorage.getItem("window-layout-version")).toBe("3");
     await applyWindowMode(false);
     expect(native.window.setSize).toHaveBeenLastCalledWith(
       expect.objectContaining({ width: 460, height: 720 }),
     );
   });
 
-  it("upgrades the expanded-size preference while restoring mini mode", async () => {
-    localStorage.setItem("window-mode", "mini");
-    localStorage.setItem(
-      "expanded-window-size",
-      JSON.stringify({ width: 390, height: 640 }),
-    );
-    expect(await readWindowMode()).toBe(true);
-    expect(native.window.setSize).toHaveBeenLastCalledWith(
-      expect.objectContaining({ width: 340, height: 168 }),
-    );
-    await applyWindowMode(false);
-    expect(native.window.setSize).toHaveBeenLastCalledWith(
-      expect.objectContaining({ width: 390, height: 612 }),
-    );
-  });
+  it.each([640, 612])(
+    "upgrades the saved %ipx expanded preference while restoring mini mode",
+    async (height) => {
+      localStorage.setItem("window-mode", "mini");
+      localStorage.setItem(
+        "expanded-window-size",
+        JSON.stringify({ width: 390, height }),
+      );
+      localStorage.setItem("window-layout-version", "2");
+      expect(await readWindowMode()).toBe(true);
+      expect(native.window.setSize).toHaveBeenLastCalledWith(
+        expect.objectContaining({ width: 340, height: 168 }),
+      );
+      await applyWindowMode(false);
+      expect(native.window.setSize).toHaveBeenLastCalledWith(
+        expect.objectContaining({ width: 390, height: 568 }),
+      );
+    },
+  );
 
   it("does not persist a mode switch when the native resize fails", async () => {
     localStorage.setItem("window-mode", "expanded");
@@ -135,7 +141,7 @@ describe("native window mode", () => {
       expect.objectContaining({ width: 460, height: 720 }),
     );
     expect(native.window.setMinSize).toHaveBeenLastCalledWith(
-      expect.objectContaining({ width: 390, height: 600 }),
+      expect.objectContaining({ width: 390, height: 540 }),
     );
   });
 

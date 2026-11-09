@@ -97,17 +97,19 @@ function IconButton({
   children,
   active,
   disabled = false,
+  className = "",
 }: {
   label: string;
   onClick: () => void;
   children: React.ReactNode;
   active?: boolean;
   disabled?: boolean;
+  className?: string;
 }) {
   return (
     <button
       type="button"
-      className={`icon-button ${active ? "is-active" : ""}`}
+      className={`icon-button ${active ? "is-active" : ""} ${className}`}
       aria-label={label}
       title={label}
       aria-pressed={active}
@@ -178,10 +180,21 @@ function Header({
         )}
         <IconButton
           label={pinned ? t.unpin : t.pin}
+          className="pin-control"
           active={pinned}
           onClick={() => onPinChange(!pinned)}
         >
           {pinned ? <Pin size={16} /> : <PinOff size={16} />}
+        </IconButton>
+        <IconButton
+          label={t.calendar}
+          disabled={busy}
+          active={view === "calendar"}
+          onClick={() =>
+            onViewChange(view === "calendar" ? "dashboard" : "calendar")
+          }
+        >
+          <CalendarDays size={16} strokeWidth={1.5} />
         </IconButton>
         <IconButton
           label={t.settings}
@@ -215,13 +228,11 @@ function Dashboard({
   metrics,
   now,
   mini,
-  onCalendar,
 }: {
   settings: AppSettings;
   metrics: ReturnType<typeof calculateWorkMetrics>;
   now: Date;
   mini: boolean;
-  onCalendar: () => void;
 }) {
   const hoursToday = metrics.elapsedMinutesToday / 60;
   const plannedHours = metrics.plannedMinutesToday / 60;
@@ -368,11 +379,6 @@ function Dashboard({
           </span>
         </div>
       </section>
-      <button type="button" className="calendar-link" onClick={onCalendar}>
-        <CalendarDays size={15} strokeWidth={1.5} />
-        {t.calendar}
-        <ChevronRight size={14} />
-      </button>
     </main>
   );
 }
@@ -761,7 +767,6 @@ function CalendarPanel({
           </span>
         </div>
       </section>
-      <div className="calendar-note">2025–2026 节假日与补班已内置</div>
     </main>
   );
 }
@@ -838,7 +843,7 @@ function App() {
         window.requestAnimationFrame(() =>
           document
             .querySelector<HTMLButtonElement>(
-              '.header-actions button[aria-label="设置"]',
+              `.header-actions button[aria-label="${view === "calendar" ? t.calendar : t.settings}"]`,
             )
             ?.focus(),
         );
@@ -1016,7 +1021,6 @@ function App() {
             metrics={metrics}
             now={now}
             mini={mini}
-            onCalendar={() => handleViewChange("calendar")}
           />
         )}
         {view === "settings" && (

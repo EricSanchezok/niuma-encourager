@@ -21,16 +21,25 @@ test("fits the default full window closely around its content", async ({
 }) => {
   await page.clock.install({ time: workingTime });
   await page.goto("/");
-  const calendarLink = page.getByRole("button", {
+  const calendarButton = page.getByRole("button", {
     name: "工作日历",
     exact: true,
   });
-  await expect(calendarLink).toBeInViewport();
+  await expect(calendarButton).toBeInViewport();
+  expect(
+    await calendarButton.evaluate((button) =>
+      Boolean(button.closest("header")),
+    ),
+  ).toBe(true);
+  expect((await calendarButton.innerText()).trim()).toBe("");
+  await expect(calendarButton.locator("svg")).toBeVisible();
   await settleView(page);
   const layout = await page.locator(".dashboard-content").evaluate((main) => {
-    const link = main.querySelector(".calendar-link")!.getBoundingClientRect();
+    const lastRow = main
+      .querySelector(".monthly-details")!
+      .getBoundingClientRect();
     return {
-      bottomGap: innerHeight - link.bottom,
+      bottomGap: innerHeight - lastRow.bottom,
       scrollHeight: main.scrollHeight,
       clientHeight: main.clientHeight,
     };
@@ -38,6 +47,11 @@ test("fits the default full window closely around its content", async ({
   expect(layout.bottomGap).toBeGreaterThanOrEqual(8);
   expect(layout.bottomGap).toBeLessThanOrEqual(24);
   expect(layout.scrollHeight).toBeLessThanOrEqual(layout.clientHeight);
+  await calendarButton.click();
+  await expect(
+    page.getByRole("heading", { name: "工作日历", exact: true }),
+  ).toBeVisible();
+  await expect(calendarButton).toHaveAttribute("aria-pressed", "true");
 });
 
 test("updates only to real income and time values without shifting the numeric layout", async ({
@@ -142,6 +156,7 @@ test("keeps a large valid salary inside the earnings surface", async ({
 
 test("reveals mini controls on hover and keyboard focus without a permanent title", async ({
   page,
+  browserName,
 }) => {
   await page.clock.install({ time: workingTime });
   await page.goto("/");
@@ -180,6 +195,14 @@ test("reveals mini controls on hover and keyboard focus without a permanent titl
     document.body.removeAttribute("tabindex");
   });
   await page.keyboard.press("Tab");
+  // WebKit may leave button navigation to Option-Tab when full keyboard
+  // access is disabled. Keep the CSS/focus assertion identical in both cases.
+  if (
+    browserName === "webkit" &&
+    (await page.evaluate(() => document.activeElement === document.body))
+  ) {
+    await page.keyboard.press("Alt+Tab");
+  }
   await expect(toolbar).toHaveCSS("opacity", "1");
   await expect(
     page.getByRole("button", { name: "展开窗口", exact: true }),

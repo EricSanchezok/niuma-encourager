@@ -5,17 +5,17 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 export { isTauri };
 
 export const MINI_WINDOW_SIZE = { width: 340, height: 168 };
-export const EXPANDED_WINDOW_SIZE = { width: 390, height: 612 };
+export const EXPANDED_WINDOW_SIZE = { width: 390, height: 568 };
 const MODE_KEY = "window-mode";
 const EXPANDED_SIZE_KEY = "expanded-window-size";
 const LAYOUT_VERSION_KEY = "window-layout-version";
-const LAYOUT_VERSION = "2";
+const LAYOUT_VERSION = "3";
 let resizing = false;
 
 function minimumSize(mini: boolean): LogicalSize {
   return new LogicalSize(
     mini ? MINI_WINDOW_SIZE.width : 390,
-    mini ? MINI_WINDOW_SIZE.height : 600,
+    mini ? MINI_WINDOW_SIZE.height : 540,
   );
 }
 
@@ -25,7 +25,7 @@ function readExpandedSize(): LogicalSize {
     if (size && Number.isFinite(size.width) && Number.isFinite(size.height)) {
       return new LogicalSize(
         Math.max(390, size.width),
-        Math.max(600, size.height),
+        Math.max(540, size.height),
       );
     }
   } catch {
@@ -50,7 +50,7 @@ export async function readWindowMode(): Promise<boolean> {
       const saved = JSON.parse(
         localStorage.getItem(EXPANDED_SIZE_KEY) ?? "null",
       );
-      if (saved?.width === 390 && saved?.height === 640) {
+      if (saved?.width === 390 && [612, 640].includes(saved?.height)) {
         localStorage.setItem(
           EXPANDED_SIZE_KEY,
           JSON.stringify(EXPANDED_WINDOW_SIZE),
@@ -63,7 +63,7 @@ export async function readWindowMode(): Promise<boolean> {
       const size = (await window.innerSize()).toLogical(
         await window.scaleFactor(),
       );
-      if (size.width === 390 && size.height === 640) {
+      if (size.width === 390 && [612, 640].includes(size.height)) {
         await window.setSize(
           new LogicalSize(
             EXPANDED_WINDOW_SIZE.width,
