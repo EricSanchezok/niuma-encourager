@@ -2,6 +2,8 @@
 
 把工作时间换算成收入的桌面小工具。完整悬浮窗和迷你悬浮窗都能显示今日已赚、下班倒计时和工时进度，设置与排班保存在本机。金额逐位滚动，倒计时只切换发生变化的数字，支持系统的“减少动态效果”偏好。
 
+灵感来源于小红书作者 [@Niumer](https://xhslink.cn/o/9CnqfEjrwr9)。
+
 [下载 macOS](https://github.com/EricSanchezok/niuma-encourager/releases/latest/download/niuma-encourager_macos-universal.dmg) · [下载 Windows](https://github.com/EricSanchezok/niuma-encourager/releases/latest/download/niuma-encourager_windows-x64-setup.exe) · [下载 Linux](https://github.com/EricSanchezok/niuma-encourager/releases/latest/download/niuma-encourager_linux-x86_64.AppImage) · [全部安装包](https://github.com/EricSanchezok/niuma-encourager/releases/latest)
 
 <img src="docs/images/dashboard.png" width="340" alt="完整悬浮窗，显示实时收入、下班倒计时和本月累计">
