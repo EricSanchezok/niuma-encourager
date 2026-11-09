@@ -4,6 +4,9 @@
 
 [下载 macOS](https://github.com/EricSanchezok/niuma-encourager/releases/latest/download/niuma-encourager_macos-universal.dmg) · [下载 Windows](https://github.com/EricSanchezok/niuma-encourager/releases/latest/download/niuma-encourager_windows-x64-setup.exe) · [下载 Linux](https://github.com/EricSanchezok/niuma-encourager/releases/latest/download/niuma-encourager_linux-x86_64.AppImage) · [全部安装包](https://github.com/EricSanchezok/niuma-encourager/releases/latest)
 
+<img src="docs/images/dashboard.png" width="340" alt="完整悬浮窗，显示实时收入、下班倒计时和本月累计">
+<img src="docs/images/mini.png" width="300" alt="迷你悬浮窗">
+
 ## 安装
 
 | 系统 | 安装包 | 使用方式 |
@@ -48,6 +51,8 @@ pnpm tauri dev
 pnpm lint
 pnpm test
 pnpm build
+pnpm exec playwright install chromium
+pnpm test:e2e
 cargo check --manifest-path src-tauri/Cargo.toml --locked
 pnpm tauri build
 ```
