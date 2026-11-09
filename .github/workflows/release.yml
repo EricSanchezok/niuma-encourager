@@ -130,6 +130,22 @@ jobs:
               assert len(matches) == 1, f'Expected one {pattern}, found {matches}'
               shutil.copy2(matches[0], destination / name)
           PY
+      - name: Verify macOS disk image
+        if: matrix.name == 'macos'
+        run: hdiutil verify release-assets/niuma-encourager_macos-universal.dmg
+      - name: Verify Debian package metadata
+        if: matrix.name == 'linux'
+        run: |
+          test "$(dpkg-deb --field release-assets/niuma-encourager_linux-amd64.deb Package)" = "niuma-encourager"
+          test "$(dpkg-deb --field release-assets/niuma-encourager_linux-amd64.deb Architecture)" = "amd64"
+          dpkg-deb --info release-assets/niuma-encourager_linux-amd64.deb
+          dpkg-deb --contents release-assets/niuma-encourager_linux-amd64.deb > /dev/null
+      - name: Verify Windows installer
+        if: matrix.name == 'windows'
+        shell: pwsh
+        run: |
+          $installer = [System.IO.File]::ReadAllBytes("release-assets/niuma-encourager_windows-x64-setup.exe")
+          if ($installer[0] -ne 0x4D -or $installer[1] -ne 0x5A) { throw "Invalid executable installer" }
       - uses: actions/upload-artifact@v4
         with:
           name: installers-${{ matrix.name }}

@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "牛马鼓励器",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "identifier": "com.ericsanchezok.niumaencourager",
   "build": {
     "frontendDist": "../dist",
