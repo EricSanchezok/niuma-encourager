@@ -1,0 +1,174 @@
+name: Release desktop builds
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag to build, for example v0.1.0
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  PNPM_VERSION: 11.7.0
+
+jobs:
+  verify:
+    runs-on: ubuntu-22.04
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - name: Verify release version
+        id: version
+        env:
+          VERSION_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          python - <<'PY'
+          import json, os, re
+          tag = os.environ['VERSION_TAG']
+          package = json.load(open('package.json'))['version']
+          tauri = json.load(open('src-tauri/tauri.conf.json'))['version']
+          cargo = re.search(r'^version = "([^"]+)"', open('src-tauri/Cargo.toml').read(), re.M).group(1)
+          assert tag == f'v{package}', f'Tag {tag} must match package version {package}'
+          assert package == tauri == cargo, 'Frontend and native package versions must match'
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f'tag={tag}\n')
+          PY
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm test
+      - run: pnpm build
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+
+  build:
+    needs: verify
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macos
+            os: macos-latest
+            target: universal-apple-darwin
+            rust_targets: aarch64-apple-darwin,x86_64-apple-darwin
+            bundles: dmg
+          - name: windows
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            rust_targets: x86_64-pc-windows-msvc
+            bundles: nsis
+          - name: linux
+            os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            rust_targets: x86_64-unknown-linux-gnu
+            bundles: appimage,deb
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.verify.outputs.tag }}
+      - name: Install Linux dependencies
+        if: matrix.name == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf libgtk-3-dev
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_targets }}
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+      - run: pnpm install --frozen-lockfile
+      - name: Build desktop installers
+        uses: tauri-apps/tauri-action@v0
+        with:
+          args: --target ${{ matrix.target }} --bundles ${{ matrix.bundles }}
+      - name: Prepare download names
+        shell: bash
+        env:
+          BUILD_NAME: ${{ matrix.name }}
+          BUILD_TARGET: ${{ matrix.target }}
+        run: |
+          python - <<'PY'
+          import os, pathlib, shutil
+          base = pathlib.Path('src-tauri/target') / os.environ['BUILD_TARGET'] / 'release/bundle'
+          outputs = {
+              'macos': [('dmg/*.dmg', 'niuma-encourager_macos-universal.dmg')],
+              'windows': [('nsis/*.exe', 'niuma-encourager_windows-x64-setup.exe')],
+              'linux': [('appimage/*.AppImage', 'niuma-encourager_linux-x86_64.AppImage'), ('deb/*.deb', 'niuma-encourager_linux-amd64.deb')],
+          }
+          destination = pathlib.Path('release-assets')
+          destination.mkdir()
+          for pattern, name in outputs[os.environ['BUILD_NAME']]:
+              matches = list(base.glob(pattern))
+              assert len(matches) == 1, f'Expected one {pattern}, found {matches}'
+              shutil.copy2(matches[0], destination / name)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installers-${{ matrix.name }}
+          path: release-assets/*
+          if-no-files-found: error
+
+  publish:
+    needs: [verify, build]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.verify.outputs.tag }}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: installers-*
+          path: release-assets
+          merge-multiple: true
+      - name: Publish complete release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION_TAG: ${{ needs.verify.outputs.tag }}
+        run: |
+          cd release-assets
+          test "$(find . -maxdepth 1 -type f | wc -l)" -eq 4
+          sha256sum niuma-* > SHA256SUMS.txt
+          cat > release-notes.md <<'NOTES'
+          牛马鼓励器首次公开版本。
+
+          - macOS Apple 芯片和 Intel 请下载 universal DMG。
+          - Windows x64 请下载 setup.exe。
+          - Linux x86_64 请下载 AppImage，Ubuntu/Debian 也可使用 .deb。
+
+          本版未进行 Apple 公证或 Windows 代码签名。首次打开步骤、Linux 依赖和计薪规则见 README。
+          NOTES
+          if ! gh release view "$VERSION_TAG" >/dev/null 2>&1; then
+            gh release create "$VERSION_TAG" --verify-tag --draft --title "牛马鼓励器 $VERSION_TAG" --notes-file release-notes.md
+          fi
+          gh release upload "$VERSION_TAG" niuma-* SHA256SUMS.txt --clobber
+          gh release edit "$VERSION_TAG" --draft=false --latest
